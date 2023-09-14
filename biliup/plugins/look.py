@@ -36,9 +36,22 @@ class Look(DownloadBase):
     def check_stream(self, is_check=False):
         rid = re.search(r'id=(\d*)', self.url).group(1)
         try:
-            self.raw_stream_url = self.get_real_url(rid)['hlsPullUrl']
+            # {'httpPullUrl': 'http://pull0583d674.live.126.net/live/90b7b4b5f46f43c4aebd21eb74ea1a00.flv?netease=pull0583d674.live.126.net', 
+            # 'hlsPullUrl': 'http://pull0583d674.live.126.net/live/90b7b4b5f46f43c4aebd21eb74ea1a00/playlist.m3u8', 
+            # 'rtmpPullUrl': 'rtmp://pull0583d674.live.126.net/live/90b7b4b5f46f43c4aebd21eb74ea1a00'}
+            
+            # self.raw_stream_url = self.get_real_url(rid)['hlsPullUrl']
             # self.raw_stream_url = self.get_real_url(rid)['httpPullUrl']
             # self.raw_stream_url = self.get_real_url(rid)['rtmpPullUrl']
+            three_urls = self.get_real_url(rid)
+            if requests.get(three_urls['hlsPullUrl'], stream=True).status_code != 404:
+                self.raw_stream_url = three_urls['hlsPullUrl']
+                return True
+            elif requests.get(three_urls['httpPullUrl'], stream=True).status_code != 404:
+                self.raw_stream_url = three_urls['httpPullUrl']
+                return True
+            else:
+                return False
         except Exception as e:
             print('Exception：', e)
             return False
