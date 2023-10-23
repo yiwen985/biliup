@@ -30,8 +30,9 @@ pubKey = '010001'
 @Plugin.download(regexp=r'(?:https?://)?h5\.look\.163\.com')
 @Plugin.download(regexp=r'(?:https?://)?look\.163\.com')
 class Look(DownloadBase):
-    def __init__(self, fname, url, suffix='flv'):
+    def __init__(self, fname, url, suffix='mp4'):
         super().__init__(fname, url, suffix)
+        self.liveStreamType = -1
     
     def check_stream(self, is_check=False):
         rid = re.search(r'id=(\d*)', self.url).group(1)
@@ -44,24 +45,29 @@ class Look(DownloadBase):
             # self.raw_stream_url = self.get_real_url(rid)['httpPullUrl']
             # self.raw_stream_url = self.get_real_url(rid)['rtmpPullUrl']
             three_urls = self.get_real_url(rid)
-            if requests.get(three_urls['hlsPullUrl'], stream=True).status_code != 404:
-                self.raw_stream_url = three_urls['hlsPullUrl']
-                return True
-            elif requests.get(three_urls['httpPullUrl'], stream=True).status_code != 404:
+            # 轮播状态，退出
+            if self.liveStreamType == 10:
+                return False
+            if requests.get(three_urls['httpPullUrl'], stream=True).status_code != 404:
                 self.raw_stream_url = three_urls['httpPullUrl']
+                return True
+            elif requests.get(three_urls['hlsPullUrl'], stream=True).status_code != 404:
+                self.raw_stream_url = three_urls['hlsPullUrl']
                 return True
             else:
                 return False
         except Exception as e:
             print('Exception：', e)
             return False
-        return True
     
     def get_real_url(self, rid):
         try:
             request_data = encrypted_request({"liveRoomNo": rid})
             response = requests.post(url='https://api.look.163.com/weapi/livestream/room/get/v3', data=request_data)
             real_url = response.json()['data']['roomInfo']['liveUrl']
+            self.liveStreamType = response.json()['data']['roomInfo']['liveStreamType']
+            # if liveStreamType == 10:
+            #     raise Exception("当前为录播")
         except Exception:
             raise Exception('直播间不存在或未开播')
         self.room_title = response.json()['data']['roomInfo']['title']
